@@ -30,6 +30,15 @@ enum ModelLoader {
         supportedExtensions.contains(url.pathExtension.lowercased())
     }
 
+    /// Résout l'URL du fichier d'une scène : iCloud Drive si `cloudPath` est
+    /// renseigné (avec téléchargement à la demande), sinon bookmark local.
+    static func resolveURL(for state: SceneState) async throws -> URL {
+        if let cloudPath = state.cloudPath {
+            return try await CloudStore.ensureDownloaded(cloudPath)
+        }
+        return try resolveBookmark(state)
+    }
+
     /// Résout le bookmark de sécurité d'une scène persistée et rouvre l'accès au fichier.
     static func resolveBookmark(_ state: SceneState) throws -> URL {
         var isStale = false

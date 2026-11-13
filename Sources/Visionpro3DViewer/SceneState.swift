@@ -8,8 +8,11 @@ import Foundation
 struct SceneState: Codable, Identifiable, Hashable {
     let id: UUID
     var fileName: String
-    /// Bookmark de sécurité permettant de rouvrir le fichier ultérieurement.
+    /// Bookmark de sécurité permettant de rouvrir le fichier local ultérieurement.
     var bookmark: Data
+    /// Chemin relatif du fichier dans le conteneur iCloud Drive (si la scène
+    /// provient d'iCloud ; nil pour un fichier local importé).
+    var cloudPath: String?
     /// Position de l'entité dans la scène, en mètres (x, y, z).
     var position: [Double]
     /// Rotation de l'entité sous forme de quaternion (x, y, z, w).
@@ -33,8 +36,20 @@ struct SceneState: Codable, Identifiable, Hashable {
             includingResourceValuesForKeys: nil,
             relativeTo: nil
         )) ?? Data()
+        self.cloudPath = nil
         self.position = position
         self.rotation = rotation
         self.scale = scale
+    }
+
+    /// Scène pointant vers un fichier stocké dans iCloud Drive.
+    init(cloudPath: String, fileName: String) {
+        self.id = UUID()
+        self.fileName = fileName
+        self.bookmark = Data()
+        self.cloudPath = cloudPath
+        self.position = [0, 0, 0]
+        self.rotation = [0, 0, 0, 1]
+        self.scale = 1.0
     }
 }

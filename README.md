@@ -34,6 +34,26 @@ Chaque scène est enregistrée en JSON dans `Documents/Scenes/<id>.json` :
 L'état est sauvegardé à la fin de chaque geste et à la fermeture de la vue ;
 la scène est restaurée à l'identique à la réouverture depuis l'écran d'accueil.
 
+## Stockage iCloud (multi-plateformes)
+
+Les fichiers 3D peuvent être stockés dans le **conteneur iCloud Drive** de l'app
+(`iCloud.<bundle-id>/Documents`) :
+
+- **Upload** : menu contextuel « Copier vers iCloud Drive » sur une scène locale ;
+- **Lecture** : section « iCloud Drive » listant les fichiers synchronisés, avec
+  téléchargement à la demande (`startDownloadingUbiquitousItem`) ;
+- **Multi-plateformes** : le même conteneur est accessible depuis visionOS, iOS,
+  iPadOS et macOS (app Fichiers, Finder, ou une app compagnon partageant le même
+  `iCloud.<bundle-id>`), ce qui synchronise automatiquement les fichiers 3D
+  entre tous les appareils.
+
+### Activation dans Xcode
+
+Le package Swift ne peut pas embarquer d'entitlements : dans Xcode, sur la cible
+de l'app, activez **Signing & Capabilities → + Capability → iCloud → iCloud Drive**
+(conteneur `iCloud.$(CFBundleIdentifier)`), ou associez le fichier
+`Visionpro3DViewer.entitlements` fourni à la racine du dépôt.
+
 ## Lancer le projet
 
 1. Ouvrir le dépôt dans **Xcode 16+** (`File > Open...` sur le `Package.swift`,
@@ -52,5 +72,8 @@ Sources/Visionpro3DViewer/
 ├── ViewerSceneView.swift        # RealityView + gestes + restauration/persistance
 ├── ModelLoader.swift            # USDZ (RealityKit) + OBJ/STL/glTF (ModelIO)
 ├── SceneState.swift             # Modèle Codable de l'état d'une scène
-└── SceneStateStore.swift        # Persistance JSON des scènes (Documents/Scenes)
+├── SceneStateStore.swift        # Persistance JSON des scènes (Documents/Scenes)
+└── CloudStore.swift             # Conteneur iCloud Drive (upload, listing, téléchargement)
 ```
+
+`Visionpro3DViewer.entitlements` (racine) : à activer dans Xcode pour iCloud Drive.

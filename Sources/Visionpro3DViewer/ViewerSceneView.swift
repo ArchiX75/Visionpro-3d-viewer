@@ -110,7 +110,7 @@ struct ViewerSceneView: View {
 
     private func loadModel() async {
         do {
-            let url = try ModelLoader.resolveBookmark(state)
+            let url = try await ModelLoader.resolveURL(for: state)
             let entity = try await ModelLoader.loadEntity(from: url)
             await MainActor.run { root = entity }
         } catch {
