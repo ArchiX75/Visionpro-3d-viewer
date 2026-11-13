@@ -107,6 +107,7 @@ struct ContentView: View {
             .navigationDestination(for: SceneState.self) { state in
                 ViewerSceneView(state: state)
             }
+            .background(BackgroundView())
         }
     }
 
@@ -160,8 +161,15 @@ private struct SectionHeader: View {
     let systemImage: String
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.title3.bold())
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.title3.bold())
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(Theme.accent, in: .circle)
+            Text(title)
+                .font(.title3.bold())
+        }
     }
 }
 
@@ -172,8 +180,10 @@ private struct SceneCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Image(systemName: state.cloudPath != nil ? "icloud.fill" : "cube.fill")
-                .font(.system(size: 44))
-                .foregroundStyle(.tint)
+                .font(.system(size: 36))
+                .foregroundStyle(.white)
+                .frame(width: 76, height: 76)
+                .background(Theme.accent, in: .circle)
             Text(state.fileName)
                 .font(.headline)
                 .lineLimit(1)
@@ -186,8 +196,12 @@ private struct SceneCard: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .padding(16)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: .rect(cornerRadius: 20))
+        .background(.ultraThinMaterial, in: .rect(cornerRadius: 24))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Theme.accent.opacity(0.45), lineWidth: 1.5)
+        )
     }
 }

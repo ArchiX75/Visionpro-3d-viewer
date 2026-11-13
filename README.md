@@ -65,6 +65,12 @@ de l'app, activez **Signing & Capabilities → + Capability → iCloud → iClou
 - **Mode immersif** : `ImmersiveSpace` plein écran (`immersionStyle: .full`),
   ouvert depuis la barre d'outils de la scène.
 
+## Maquettes de l'interface
+
+Rendus PNG du thème actuel (fond dégradé + halos, cartes à liseré dégradé, HUD capsule) :
+[`docs/mockups/`](docs/mockups/) — accueil, scène 3D et mode immersif
+(générés par `docs/make_mockups.py`).
+
 ## Lancer le projet
 
 1. Ouvrir le dépôt dans **Xcode 16+** (`File > Open...` sur le `Package.swift`,

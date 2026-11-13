@@ -77,18 +77,23 @@ struct InteractiveModelView: View {
             } label: {
                 Label("Réinitialiser", systemImage: "arrow.counterclockwise")
             }
+            .buttonStyle(.borderedProminent)
             Button {
                 fitToFrame()
             } label: {
                 Label("Centrer", systemImage: "scope")
             }
+            .buttonStyle(.borderedProminent)
             Text("zoom \(Int(scale * 100)) %")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .buttonStyle(.bordered)
-        .padding(10)
-        .background(.thinMaterial, in: .capsule)
+        .padding(12)
+        .background(.ultraThinMaterial, in: .capsule)
+        .overlay(
+            Capsule()
+                .stroke(Theme.accent.opacity(0.5), lineWidth: 1.5)
+        )
         .padding(.bottom, 16)
     }
 
