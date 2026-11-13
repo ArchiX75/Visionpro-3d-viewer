@@ -1,68 +1,79 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Écran d'accueil : scènes enregistrées localement + fichiers iCloud Drive,
-/// et bouton d'import d'un nouveau fichier 3D.
+/// Écran d'accueil : grille de cartes des scènes enregistrées ( rouvertes telles
+/// quelles) + section iCloud Drive, et bouton d'import d'un nouveau fichier 3D.
 struct ContentView: View {
-    @StateObject private var store = SceneStateStore()
+    @EnvironmentObject private var store: SceneStateStore
+    @EnvironmentObject private var session: ViewerSession
     @StateObject private var cloud = CloudStore.shared
     @State private var path: [SceneState] = []
     @State private var isImporting = false
-    @State private var importError: String?
-    @State private var cloudError: String?
+    @State private var errorMessage: String?
 
     private let contentTypes: [UTType] = ModelLoader.supportedExtensions
         .compactMap { UTType(filenameExtension: $0) }
 
+    private let columns = [GridItem(.adaptive(minimum: 240, maximum: 320), spacing: 20)]
+
     var body: some View {
         NavigationStack(path: $path) {
-            List {
-                // MARK: Scènes enregistrées (état restauré tel quel)
-                Section("Scènes enregistrées") {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 24) {
+                    // MARK: Scènes enregistrées (grille de cartes)
+                    SectionHeader(title: "Scènes enregistrées", systemImage: "cube")
                     if store.states.isEmpty {
                         ContentUnavailableView(
                             "Aucune scène",
                             systemImage: "cube.transparent",
                             description: Text("Ouvrez un fichier 3D pour commencer.")
                         )
-                    }
-                    ForEach(store.states) { state in
-                        NavigationLink(value: state) {
-                            Label(state.fileName, systemImage: state.cloudPath != nil ? "icloud" : "cube")
-                                .badge(Text("zoom \(Int(state.scale * 100)) %"))
-                        }
-                        .contextMenu {
-                            if state.cloudPath == nil {
-                                Button("Copier vers iCloud Drive") {
-                                    Task { await copyToCloud(state) }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        LazyVGrid(columns: columns, spacing: 20) {
+                            ForEach(store.states) { state in
+                                NavigationLink(value: state) {
+                                    SceneCard(state: state)
+                                }
+                                .contextMenu {
+                                    if state.cloudPath == nil {
+                                        Button("Copier vers iCloud Drive", systemImage: "icloud.and.arrow.up") {
+                                            Task { await copyToCloud(state) }
+                                        }
+                                    }
+                                    Button("Supprimer", systemImage: "trash", role: .destructive) {
+                                        if let index = store.states.firstIndex(where: { $0.id == state.id }) {
+                                            store.remove(at: IndexSet(integer: index))
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                    .onDelete(perform: store.remove)
-                }
 
-                // MARK: Fichiers iCloud Drive (synchronisés entre appareils)
-                if cloud.isAvailable {
-                    Section("iCloud Drive") {
-                        if cloud.files.isEmpty {
-                            Text("Aucun fichier 3D dans iCloud Drive pour le moment.")
-                                .foregroundStyle(.secondary)
-                        }
-                        ForEach(cloud.files) { file in
-                            Button {
-                                openCloudFile(file)
-                            } label: {
-                                Label(file.name, systemImage: file.isDownloaded ? "icloud.fill" : "icloud.and.arrow.down")
+                    // MARK: Fichiers iCloud Drive (synchronisés entre appareils)
+                    SectionHeader(title: "iCloud Drive", systemImage: "icloud")
+                    if !cloud.isAvailable {
+                        Text("iCloud indisponible : connectez-vous à iCloud et activez iCloud Drive dans les réglages.")
+                            .foregroundStyle(.secondary)
+                    } else if cloud.files.isEmpty {
+                        Text("Aucun fichier 3D dans iCloud Drive pour le moment.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(cloud.files) { file in
+                                Button {
+                                    openCloudFile(file)
+                                } label: {
+                                    Label(file.name, systemImage: file.isDownloaded ? "icloud.fill" : "icloud.and.arrow.down")
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .buttonStyle(.bordered)
                             }
                         }
                     }
-                } else {
-                    Section("iCloud Drive") {
-                        Text("iCloud indisponible : connectez-vous à iCloud et activez iCloud Drive dans les réglages.")
-                            .foregroundStyle(.secondary)
-                    }
                 }
+                .padding(24)
             }
             .navigationTitle("Vision Pro 3D Viewer")
             .toolbar {
@@ -89,14 +100,12 @@ struct ContentView: View {
             }
             .alert(
                 "Erreur",
-                isPresented: .constant(importError != nil || cloudError != nil),
-                actions: { Button("OK") { importError = nil; cloudError = nil } },
-                message: { Text(importError ?? cloudError ?? "") }
+                isPresented: .constant(errorMessage != nil),
+                actions: { Button("OK") { errorMessage = nil } },
+                message: { Text(errorMessage ?? "") }
             )
             .navigationDestination(for: SceneState.self) { state in
-                ViewerSceneView(state: state) { updated in
-                    store.update(updated)
-                }
+                ViewerSceneView(state: state)
             }
         }
     }
@@ -106,10 +115,10 @@ struct ContentView: View {
     private func importFile(_ result: Result<URL, Error>) async {
         switch result {
         case .failure(let error):
-            await MainActor.run { importError = error.localizedDescription }
+            await MainActor.run { errorMessage = error.localizedDescription }
         case .success(let url):
             guard url.startAccessingSecurityScopedResource() else {
-                await MainActor.run { importError = "Accès au fichier refusé." }
+                await MainActor.run { errorMessage = "Accès au fichier refusé." }
                 return
             }
             // Le bookmark (avec security scope) est créé tant que l'accès est actif.
@@ -133,7 +142,7 @@ struct ContentView: View {
                 cloud.refresh()
             }
         } catch {
-            await MainActor.run { cloudError = error.localizedDescription }
+            await MainActor.run { errorMessage = error.localizedDescription }
         }
     }
 
@@ -141,5 +150,44 @@ struct ContentView: View {
         let state = SceneState(cloudPath: file.id, fileName: file.name)
         store.add(state)
         path.append(state)
+    }
+}
+
+// MARK: - Sous-vues d'interface
+
+private struct SectionHeader: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.title3.bold())
+    }
+}
+
+/// Carte de scène : nom du fichier, niveau de zoom mémorisé, origine (local/iCloud).
+private struct SceneCard: View {
+    let state: SceneState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: state.cloudPath != nil ? "icloud.fill" : "cube.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(.tint)
+            Text(state.fileName)
+                .font(.headline)
+                .lineLimit(1)
+            HStack(spacing: 8) {
+                Label("zoom \(Int(state.scale * 100)) %", systemImage: "magnifyingglass")
+                if state.cloudPath != nil {
+                    Label("iCloud", systemImage: "icloud")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20))
     }
 }

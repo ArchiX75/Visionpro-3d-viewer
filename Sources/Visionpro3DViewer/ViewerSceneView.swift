@@ -1,16 +1,17 @@
 import RealityKit
 import SwiftUI
 
-/// Vue de visualisation d'une scène 3D :
-/// - chargement du fichier (multi-formats) ;
-/// - manipulation par gestes : zoom (pincement), déplacement (drag), rotation ;
-/// - restauration de l'état exact laissé par l'utilisateur (zoom, position, rotation) ;
-/// - persistance automatique de cet état à chaque fin de geste et à la fermeture.
-struct ViewerSceneView: View {
+/// Composant 3D interactif réutilisable (fenêtre volumétrique ET espace immersif) :
+/// - chargement du fichier (multi-formats, local ou iCloud) avec état de progression ;
+/// - gestes : zoom (pincement), déplacement (drag), rotation, double tap pour réinitialiser ;
+/// - HUD : niveau de zoom + boutons réinitialiser / centrer ;
+/// - restauration de l'état laissé par l'utilisateur et persistance automatique.
+struct InteractiveModelView: View {
     let state: SceneState
     let onStateChange: (SceneState) -> Void
 
     @State private var root: Entity?
+    @State private var isLoading = true
     @State private var position: SIMD3<Float>
     @State private var rotation: simd_quatf
     @State private var scale: Float
@@ -52,18 +53,43 @@ struct ViewerSceneView: View {
             if let loadError {
                 Text(loadError)
                     .padding()
-                    .background(.red.opacity(0.8), in: .rect(cornerRadius: 12))
+                    .background(.red.opacity(0.85), in: .rect(cornerRadius: 12))
+                    .padding()
+            } else if isLoading {
+                ProgressView("Chargement de \(state.fileName)…")
+                    .padding()
+                    .background(.thinMaterial, in: .rect(cornerRadius: 12))
                     .padding()
             }
         }
         .overlay(alignment: .bottom) {
-            Text("\(state.fileName) — zoom \(Int(scale * 100)) %")
-                .font(.caption)
-                .padding(8)
-                .background(.thinMaterial, in: .capsule)
-                .padding(.bottom, 12)
+            hud
         }
         .onDisappear { persist() }
+    }
+
+    // MARK: - HUD
+
+    private var hud: some View {
+        HStack(spacing: 16) {
+            Button {
+                resetTransform()
+            } label: {
+                Label("Réinitialiser", systemImage: "arrow.counterclockwise")
+            }
+            Button {
+                fitToFrame()
+            } label: {
+                Label("Centrer", systemImage: "scope")
+            }
+            Text("zoom \(Int(scale * 100)) %")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.bordered)
+        .padding(10)
+        .background(.thinMaterial, in: .capsule)
+        .padding(.bottom, 16)
     }
 
     // MARK: - Gestes de manipulation
@@ -106,16 +132,36 @@ struct ViewerSceneView: View {
         )
     }
 
-    // MARK: - Chargement et persistance
+    // MARK: - Chargement, recadrage et persistance
 
     private func loadModel() async {
         do {
             let url = try await ModelLoader.resolveURL(for: state)
             let entity = try await ModelLoader.loadEntity(from: url)
-            await MainActor.run { root = entity }
+            await MainActor.run {
+                root = entity
+                isLoading = false
+            }
         } catch {
-            await MainActor.run { loadError = error.localizedDescription }
+            await MainActor.run {
+                loadError = error.localizedDescription
+                isLoading = false
+            }
         }
+    }
+
+    /// Recadre le modèle dans la vue selon sa bounding box.
+    private func fitToFrame() {
+        guard let root else { return }
+        let box = root.visualBounds(relativeTo: root)
+        let extents = box.extents
+        let maxDim = max(extents.x, extents.y, extents.z)
+        guard maxDim > 0 else { return }
+        scale = min(max(0.8 / maxDim, minScale), maxScale)
+        position = -SIMD3<Float>(box.center)
+        baseScale = scale
+        basePosition = position
+        persist()
     }
 
     private func resetTransform() {
@@ -136,5 +182,34 @@ struct ViewerSceneView: View {
         updated.rotation = [Double(q.x), Double(q.y), Double(q.z), Double(q.w)]
         updated.scale = Double(scale)
         onStateChange(updated)
+    }
+}
+
+/// Vue de la scène dans la fenêtre principale : modèle interactif + bouton d'immersion.
+struct ViewerSceneView: View {
+    let state: SceneState
+
+    @EnvironmentObject private var store: SceneStateStore
+    @EnvironmentObject private var session: ViewerSession
+    @Environment(\.openImmersiveSpace) private var openImmersiveSpace
+
+    var body: some View {
+        InteractiveModelView(state: state) { updated in
+            store.update(updated)
+            session.current = updated
+        }
+        .navigationTitle(state.fileName)
+        .toolbar {
+            ToolbarItem(placement: .bottomBar) {
+                Button {
+                    Task {
+                        session.current = state
+                        _ = await openImmersiveSpace(id: "ImmersiveViewer")
+                    }
+                } label: {
+                    Label("Mode immersif", systemImage: "visionpro")
+                }
+            }
+        }
     }
 }

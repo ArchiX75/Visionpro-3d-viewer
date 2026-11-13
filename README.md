@@ -54,6 +54,17 @@ de l'app, activez **Signing & Capabilities → + Capability → iCloud → iClou
 (conteneur `iCloud.$(CFBundleIdentifier)`), ou associez le fichier
 `Visionpro3DViewer.entitlements` fourni à la racine du dépôt.
 
+## Interface
+
+- **Écran d'accueil** : grille de cartes (icône, nom, zoom mémorisé, badge iCloud),
+  section iCloud Drive, import via `fileImporter`, menu contextuel
+  (copier vers iCloud / supprimer) ;
+- **Scène 3D** : composant `InteractiveModelView` (fenêtre + immersion) avec HUD
+  (zoom %, « Réinitialiser », « Centrer » selon la bounding box), état de chargement,
+  double tap pour réinitialiser ;
+- **Mode immersif** : `ImmersiveSpace` plein écran (`immersionStyle: .full`),
+  ouvert depuis la barre d'outils de la scène.
+
 ## Lancer le projet
 
 1. Ouvrir le dépôt dans **Xcode 16+** (`File > Open...` sur le `Package.swift`,
@@ -68,8 +79,10 @@ de l'app, activez **Signing & Capabilities → + Capability → iCloud → iClou
 ```
 Sources/Visionpro3DViewer/
 ├── Visionpro3DViewerApp.swift   # Point d'entrée (@main, fenêtre volumétrique)
-├── ContentView.swift            # Liste des scènes + import de fichier (fileImporter)
-├── ViewerSceneView.swift        # RealityView + gestes + restauration/persistance
+├── ContentView.swift            # Grille de cartes des scènes + iCloud + import (fileImporter)
+├── ViewerSceneView.swift        # InteractiveModelView (gestes/HUD/persistance) + fenêtre
+├── ImmersiveViewerView.swift    # Espace immersif plein écran
+├── ViewerSession.swift          # Scène courante partagée fenêtre / immersion
 ├── ModelLoader.swift            # USDZ (RealityKit) + OBJ/STL/glTF (ModelIO)
 ├── SceneState.swift             # Modèle Codable de l'état d'une scène
 ├── SceneStateStore.swift        # Persistance JSON des scènes (Documents/Scenes)
