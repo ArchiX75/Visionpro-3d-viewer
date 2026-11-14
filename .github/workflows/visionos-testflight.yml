@@ -35,6 +35,9 @@ jobs:
           security set-keychain-settings -t 3600 -u build.keychain
 
       - name: Archiver l'app visionOS
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CERT_P12: ${{ secrets.DISTRIBUTION_P12_BASE64 }}
         run: |
           SCHEME=$(xcodebuild -list | awk '/Schemes:/{getline; gsub(/^[ \t]+/,""); print; exit}')
           if [ -z "$SCHEME" ]; then
@@ -43,10 +46,21 @@ jobs:
             exit 1
           fi
           echo "Scheme utilisé : $SCHEME"
+          SIGN_ARGS=()
+          if [ -n "$TEAM_ID" ] && [ -n "$CERT_P12" ]; then
+            echo "Signature équipe $TEAM_ID + entitlements iCloud"
+            SIGN_ARGS+=(
+              CODE_SIGN_STYLE=Automatic
+              DEVELOPMENT_TEAM="$TEAM_ID"
+              CODE_SIGN_ENTITLEMENTS=Visionpro3DViewer.entitlements
+              -allowProvisioningUpdates
+            )
+          fi
           xcodebuild -scheme "$SCHEME" \
             -destination 'generic/platform=visionOS' \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/Visionpro3DViewer.xcarchive" \
+            "${SIGN_ARGS[@]}" \
             archive
 
       - name: Publier l'archive en artefact
