@@ -140,8 +140,8 @@ struct ContentView: View {
                 var updated = state
                 updated.cloudPath = relative
                 store.update(updated)
-                cloud.refresh()
             }
+            await cloud.refresh()
         } catch {
             await MainActor.run { errorMessage = error.localizedDescription }
         }

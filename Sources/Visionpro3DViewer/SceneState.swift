@@ -32,7 +32,7 @@ struct SceneState: Codable, Identifiable, Hashable {
         // Le bookmark inclut le security scope : le fichier restera accessible
         // même après la fermeture de l'app.
         self.bookmark = (try? url.bookmarkData(
-            options: [.withSecurityScope],
+            options: [],
             includingResourceValuesForKeys: nil,
             relativeTo: nil
         )) ?? Data()

@@ -128,7 +128,7 @@ struct InteractiveModelView: View {
             // Rotation (rotation à deux doigts autour de l'axe vertical)
             RotationGesture()
                 .onChanged { value in
-                    rotation = simd_quatf(angle: Float(value), axis: SIMD3<Float>(0, 1, 0)) * baseRotation
+                    rotation = simd_quatf(angle: Float(value.degrees), axis: SIMD3<Float>(0, 1, 0)) * baseRotation
                 }
                 .onEnded { _ in
                     baseRotation = rotation

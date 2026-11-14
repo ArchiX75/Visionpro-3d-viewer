@@ -36,7 +36,7 @@ final class CloudStore: ObservableObject {
 
     /// Racine du conteneur ubiquitaire iCloud de l'app (nil si iCloud indisponible).
     static var containerURL: URL? {
-        FileManager.default.url(forUbiquityContainerDirectory: nil)
+        FileManager.default.url(forUbiquityContainerIdentifier: nil)
     }
 
     /// Sous-dossier visible dans iCloud Drive (app Fichiers / Finder).

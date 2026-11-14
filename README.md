@@ -10,10 +10,11 @@ rotation) et de **rouvrir chaque scène exactement comme elle a été laissée**
 | Format | Chemin de chargement |
 |--------|----------------------|
 | USDZ / USD / USDA / USDC | `ModelEntity.load` (RealityKit natif, matériaux/animations conservés) |
-| OBJ / STL / glTF / GLB / DAE | ModelIO (`MDLAsset`) → conversion en `MeshResource` RealityKit |
+| OBJ / STL | parseur intégré (`ModelLoader.swift`) → conversion en `MeshResource` RealityKit |
 
-> SceneKit n'étant pas disponible sur visionOS, les formats non-USD sont convertis
-> maillage par maillage via ModelIO (`ModelLoader.swift`).
+> ModelIO et SceneKit n'étant pas disponibles sur visionOS, les fichiers OBJ/STL
+> sont parsés directement puis convertis en `MeshResource`. Les formats glTF/GLB/DAE
+> ne sont pas pris en charge sur visionOS.
 
 ## Manipulation de la scène
 
