@@ -36,13 +36,31 @@ jobs:
 
       - name: Archiver l'app visionOS
         run: |
-          xcodebuild -scheme Visionpro3DViewer \
+          SCHEME=$(xcodebuild -list | awk '/Schemes:/{getline; gsub(/^[ \t]+/,""); print; exit}')
+          if [ -z "$SCHEME" ]; then
+            echo "::error::Aucun scheme trouvé pour ce package SwiftPM"
+            xcodebuild -list
+            exit 1
+          fi
+          echo "Scheme utilisé : $SCHEME"
+          xcodebuild -scheme "$SCHEME" \
             -destination 'generic/platform=visionOS' \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/Visionpro3DViewer.xcarchive" \
             archive
 
+      - name: Publier l'archive en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Visionpro3DViewer-xcarchive
+          path: ${{ env.RUNNER_TEMP }}/Visionpro3DViewer.xcarchive
+          retention-days: 7
+
       - name: Exporter l'IPA
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CERT_P12: ${{ secrets.DISTRIBUTION_P12_BASE64 }}
+        if: ${{ env.TEAM_ID != '' && env.CERT_P12 != '' }}
         run: |
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -74,12 +92,13 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+        if: ${{ env.ASC_KEY_ID != '' && env.ASC_ISSUER != '' && env.ASC_KEY_P8 != '' }}
         run: |
           mkdir -p "$HOME/.private_keys"
           echo "$ASC_KEY_P8" | base64 --decode > "$HOME/.private_keys/AuthKey_${ASC_KEY_ID}.p8"
           chmod 600 "$HOME/.private_keys/AuthKey_${ASC_KEY_ID}.p8"
           xcrun altool --upload-app \
-            --type ios \
+            --type xros \
             --file "$RUNNER_TEMP/export/"*.ipa \
             --apiKey "$ASC_KEY_ID" \
             --apiIssuer "$ASC_ISSUER"
